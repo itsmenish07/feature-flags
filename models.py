@@ -20,6 +20,10 @@ class FeatureFlag(Base):
         String,
         nullable=True
     )
+    rollout_percentage = Column(
+        Integer,
+        default=100
+    )
 
 class RemoteConfig(Base):
     __tablename__ = "remote_configs"
@@ -38,3 +42,4 @@ class RemoteConfig(Base):
     value = Column(
         String
     )
+

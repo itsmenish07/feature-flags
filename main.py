@@ -11,7 +11,7 @@ from models import (
     FeatureFlag,
     RemoteConfig
 )
-
+import hashlib
 
 
 
@@ -29,6 +29,26 @@ def get_db():
     finally:
         db.close()
 
+def should_receive_feature(
+    user_id: str,
+    percentage: int
+):
+    bucket = (
+        int(
+            hashlib.md5(
+                user_id.encode()
+            ).hexdigest(),
+            16
+        ) % 100
+    )
+
+    print(
+        f"user={user_id}, "
+        f"bucket={bucket}, "
+        f"rollout={percentage}"
+    )
+
+    return bucket < percentage
 
 
 @app.get("/flags")
@@ -41,12 +61,16 @@ def get_flags(
 @app.post("/flags")
 def create_flag(
     name: str,
+    target_group: str = "everyone",
+     rollout_percentage: int = 100,
     db: Session = Depends(get_db)
 ):
     flag = FeatureFlag(
         name=name,
-        enabled=False
-    )
+        enabled=False,
+        rollout_percentage=rollout_percentage,
+        target_group=target_group
+)
 
     db.add(flag)
     db.commit()
@@ -55,7 +79,8 @@ def create_flag(
     return {
     "id": flag.id,
     "name": flag.name,
-    "enabled": flag.enabled
+    "enabled": flag.enabled,
+    "target_group": flag.target_group
 }
 @app.put("/flags/{flag_id}")
 async def toggle_flag(
@@ -79,19 +104,22 @@ async def toggle_flag(
     db.refresh(flag)
 
     await manager.broadcast(
-    {
-        "type": "flag_update",
-        "id": flag.id,
-        "name": flag.name,
-        "enabled": flag.enabled
-    }
+{
+    "type": "flag_update",
+    "id": flag.id,
+    "name": flag.name,
+    "enabled": flag.enabled,
+    "target_group": flag.target_group
+}
 )
 
     return {
     "id": flag.id,
     "name": flag.name,
-    "enabled": flag.enabled
+    "enabled": flag.enabled,
+    "target_group": flag.target_group
 }
+
 @app.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket
@@ -188,3 +216,53 @@ async def update_config(
     )
 
     return config
+
+@app.get("/flags/group/{group}")
+def get_flags_for_group(
+    group: str,
+    db: Session = Depends(get_db)
+):
+
+    flags = db.query(
+        FeatureFlag
+    ).filter(
+        (FeatureFlag.target_group == group) |
+        (FeatureFlag.target_group == "everyone")
+    ).all()
+
+    return flags
+
+@app.get("/flags/user/{user_id}/{group}")
+def get_user_flags(
+    user_id: str,
+    group: str,
+    db: Session = Depends(get_db)
+):
+
+    flags = db.query(
+        FeatureFlag
+    ).all()
+
+    result = []
+
+    for flag in flags:
+
+        if (
+            flag.target_group != "everyone"
+            and
+            flag.target_group != group
+        ):
+            continue
+
+        if not should_receive_feature(
+            user_id,
+            flag.rollout_percentage
+        ):
+            continue
+
+        result.append({
+            "name": flag.name,
+            "enabled": flag.enabled
+        })
+
+    return result
