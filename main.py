@@ -7,6 +7,10 @@ from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
 
 from websocket_manager import manager
+from models import (
+    FeatureFlag,
+    RemoteConfig
+)
 
 
 
@@ -123,3 +127,64 @@ async def broadcast_test():
     return {
         "status": "sent"
     }
+
+@app.post("/configs")
+def create_config(
+    key: str,
+    value: str,
+    db: Session = Depends(get_db)
+):
+
+    config = RemoteConfig(
+        key=key,
+        value=value
+    )
+
+    db.add(config)
+    db.commit()
+    db.refresh(config)
+
+    return config
+
+@app.get("/configs")
+def get_configs(
+    db: Session = Depends(get_db)
+):
+
+    return db.query(
+        RemoteConfig
+    ).all()
+
+@app.put("/configs/{config_id}")
+async def update_config(
+    config_id: int,
+    value: str,
+    db: Session = Depends(get_db)
+):
+
+    config = db.query(
+        RemoteConfig
+    ).filter(
+        RemoteConfig.id == config_id
+    ).first()
+
+    if not config:
+        return {
+            "error": "not found"
+        }
+
+    config.value = value
+
+    db.commit()
+    db.refresh(config)
+
+    await manager.broadcast(
+        {
+            "type": "config_update",
+            "id": config.id,
+            "key": config.key,
+            "value": config.value
+        }
+    )
+
+    return config

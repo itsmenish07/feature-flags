@@ -15,3 +15,26 @@ class FeatureFlag(Base):
     name = Column(String, unique=True)
 
     enabled = Column(Boolean, default=False)
+
+    target_group = Column(
+        String,
+        nullable=True
+    )
+
+class RemoteConfig(Base):
+    __tablename__ = "remote_configs"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    key = Column(
+        String,
+        unique=True
+    )
+
+    value = Column(
+        String
+    )

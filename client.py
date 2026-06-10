@@ -16,12 +16,27 @@ async def main():
 
             data = json.loads(msg)
 
-            if data["type"] == "flag_update":
+
+            event_type = data.get("type")
+
+            if event_type == "flag_update":
 
                 print(
                     f"Flag {data['name']} "
                     f"changed to "
                     f"{data['enabled']}"
                 )
+
+            elif event_type == "config_update":
+
+                print(
+                    f"Config {data['key']} "
+                    f"changed to "
+                    f"{data['value']}"
+                )
+
+            else:
+
+                print("Unknown event:", data)
 
 asyncio.run(main())
