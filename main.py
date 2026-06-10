@@ -3,6 +3,10 @@ from database import SessionLocal
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from models import FeatureFlag
+from fastapi import WebSocket
+from fastapi import WebSocketDisconnect
+
+from websocket_manager import manager
 
 
 
@@ -50,7 +54,7 @@ def create_flag(
     "enabled": flag.enabled
 }
 @app.put("/flags/{flag_id}")
-def toggle_flag(
+async def toggle_flag(
     flag_id: int,
     db: Session = Depends(get_db)
 ):
@@ -70,8 +74,52 @@ def toggle_flag(
     db.commit()
     db.refresh(flag)
 
+    await manager.broadcast(
+    {
+        "type": "flag_update",
+        "id": flag.id,
+        "name": flag.name,
+        "enabled": flag.enabled
+    }
+)
+
     return {
     "id": flag.id,
     "name": flag.name,
     "enabled": flag.enabled
 }
+@app.websocket("/ws")
+async def websocket_endpoint(
+    websocket: WebSocket
+):
+    await manager.connect(
+        websocket
+    )
+
+    print("Client connected")
+
+    try:
+
+        while True:
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+
+        manager.disconnect(
+            websocket
+        )
+
+        print("Client disconnected")
+    
+@app.post("/broadcast")
+async def broadcast_test():
+
+    await manager.broadcast(
+        {
+            "message": "Hello from server"
+        }
+    )
+
+    return {
+        "status": "sent"
+    }
