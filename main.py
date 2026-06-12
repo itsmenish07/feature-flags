@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 from sqlalchemy.orm import Session
 from fastapi import Depends
@@ -19,6 +20,13 @@ from database import engine
 from models import Base
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 Base.metadata.create_all(bind=engine)
 def get_db():
@@ -65,6 +73,17 @@ def create_flag(
      rollout_percentage: int = 100,
     db: Session = Depends(get_db)
 ):
+    existing = db.query(
+        FeatureFlag
+    ).filter(
+        FeatureFlag.name == name
+    ).first()
+
+    if existing:
+        return {
+            "error": "Flag already exists"
+        }
+
     flag = FeatureFlag(
         name=name,
         enabled=False,
@@ -80,7 +99,8 @@ def create_flag(
     "id": flag.id,
     "name": flag.name,
     "enabled": flag.enabled,
-    "target_group": flag.target_group
+    "target_group": flag.target_group,
+    "rollout_percentage": flag.rollout_percentage
 }
 @app.put("/flags/{flag_id}")
 async def toggle_flag(
@@ -119,6 +139,87 @@ async def toggle_flag(
     "enabled": flag.enabled,
     "target_group": flag.target_group
 }
+
+@app.delete("/flags/{flag_id}")
+async def delete_flag(
+    flag_id: int,
+    db: Session = Depends(get_db)
+):
+    flag = db.query(
+        FeatureFlag
+    ).filter(
+        FeatureFlag.id == flag_id
+    ).first()
+
+    if not flag:
+        return {
+            "error": "Flag not found"
+        }
+
+    name = flag.name
+
+    db.delete(flag)
+    db.commit()
+
+    await manager.broadcast(
+        {
+            "type": "flag_delete",
+            "id": flag_id,
+            "name": name
+        }
+    )
+
+    return {
+        "deleted": flag_id
+    }
+
+@app.put("/flags/{flag_id}/rule")
+async def update_flag_rule(
+    flag_id: int,
+    rollout_percentage: int = None,
+    target_group: str = None,
+    db: Session = Depends(get_db)
+):
+    flag = db.query(
+        FeatureFlag
+    ).filter(
+        FeatureFlag.id == flag_id
+    ).first()
+
+    if not flag:
+        return {
+            "error": "Flag not found"
+        }
+
+    if rollout_percentage is not None:
+        flag.rollout_percentage = max(
+            0,
+            min(100, rollout_percentage)
+        )
+
+    if target_group is not None:
+        flag.target_group = target_group
+
+    db.commit()
+    db.refresh(flag)
+
+    await manager.broadcast(
+        {
+            "type": "flag_update",
+            "id": flag.id,
+            "name": flag.name,
+            "enabled": flag.enabled,
+            "target_group": flag.target_group
+        }
+    )
+
+    return {
+        "id": flag.id,
+        "name": flag.name,
+        "enabled": flag.enabled,
+        "target_group": flag.target_group,
+        "rollout_percentage": flag.rollout_percentage
+    }
 
 @app.websocket("/ws")
 async def websocket_endpoint(
@@ -162,6 +263,17 @@ def create_config(
     value: str,
     db: Session = Depends(get_db)
 ):
+
+    existing = db.query(
+        RemoteConfig
+    ).filter(
+        RemoteConfig.key == key
+    ).first()
+
+    if existing:
+        return {
+            "error": "Config already exists"
+        }
 
     config = RemoteConfig(
         key=key,
@@ -216,6 +328,40 @@ async def update_config(
     )
 
     return config
+
+@app.delete("/configs/{config_id}")
+async def delete_config(
+    config_id: int,
+    db: Session = Depends(get_db)
+):
+
+    config = db.query(
+        RemoteConfig
+    ).filter(
+        RemoteConfig.id == config_id
+    ).first()
+
+    if not config:
+        return {
+            "error": "not found"
+        }
+
+    key = config.key
+
+    db.delete(config)
+    db.commit()
+
+    await manager.broadcast(
+        {
+            "type": "config_delete",
+            "id": config_id,
+            "key": key
+        }
+    )
+
+    return {
+        "deleted": config_id
+    }
 
 @app.get("/flags/group/{group}")
 def get_flags_for_group(

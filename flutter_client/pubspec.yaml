@@ -1,0 +1,21 @@
+name: feature_flags_client
+description: Flutter client + example app for the feature flags & remote config server.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.4.0
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  web_socket_channel: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

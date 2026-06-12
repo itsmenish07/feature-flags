@@ -35,6 +35,20 @@ async def main():
                     f"{data['value']}"
                 )
 
+            elif event_type == "flag_delete":
+
+                print(
+                    f"Flag {data['name']} "
+                    f"deleted"
+                )
+
+            elif event_type == "config_delete":
+
+                print(
+                    f"Config {data['key']} "
+                    f"deleted"
+                )
+
             else:
 
                 print("Unknown event:", data)
