@@ -178,3 +178,7 @@ flutter test
 
 Neither suite needs the server running — they spin up their own in-process
 server.
+
+## Authors:
+- Naisha Rajput | Electrical Engineering , 3Y
+- Aditi Joshi | Electrical Engineering , 3Y
