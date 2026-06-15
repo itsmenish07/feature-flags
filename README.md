@@ -23,11 +23,44 @@ reload or restart needed.
 - Textual
 - Flutter (client)
 
-## Setup
+## Prerequisites
+
+- Python 3.10+
+- Git
+- Flutter SDK (only needed to run the Flutter client)
+
+## Setup (step by step)
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/itsmenish07/feature-flags.git
+cd feature-flags
+```
+
+### 2. Create a virtual environment and install dependencies
+
+```bash
+python -m venv venv
+```
+
+Activate it:
+
+```bash
+# Windows (PowerShell)
+venv\Scripts\activate
+
+# macOS / Linux
+source venv/bin/activate
+```
+
+Then install:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+### 3. Seed demo data
 
 The database (`flags.db`) is created on first run and is not committed, so a
 fresh clone starts empty. Load some demo flags and configs with:
@@ -36,18 +69,19 @@ fresh clone starts empty. Load some demo flags and configs with:
 python seed.py
 ```
 
-## Run the server
+### 4. Run the server
 
 ```bash
 uvicorn main:app --reload
 ```
 
-API docs are at http://127.0.0.1:8000/docs. CORS is open, so a browser-based
-client (e.g. Flutter web) can call the API directly.
+The API is now at http://127.0.0.1:8000 (interactive docs at `/docs`). CORS is
+open, so a browser-based client (e.g. Flutter web) can call it directly. Leave
+this terminal running.
 
-## Terminal dashboard
+### 5. Run the terminal dashboard (new terminal)
 
-With the server running:
+Activate the virtual environment again, then:
 
 ```bash
 python dashboard.py
@@ -63,6 +97,31 @@ python dashboard.py
 
 The dashboard subscribes to the WebSocket, so changes made elsewhere (the API,
 another dashboard, the Flutter app) show up live without pressing `R`.
+
+### 6. Run the Flutter client (new terminal)
+
+```bash
+cd flutter_client
+flutter pub get
+flutter run -d chrome    # or: flutter run  (pick a device)
+```
+
+The app loads flags over REST and stays in sync over the WebSocket. If the
+server is not on the same machine, change `host` in `flutter_client/lib/main.dart`
+(on the Android emulator use `10.0.2.2:8000` instead of `127.0.0.1:8000`).
+
+## Demo walkthrough
+
+Put the Flutter app (or browser) and the terminal dashboard side by side, then:
+
+1. In the dashboard, move to `dark_mode_beta` and press `Space`. The app
+   instantly switches between light and dark theme — no reload.
+2. Press `Enter` on the `welcome_message` config, type a new message. The app's
+   heading updates live.
+3. Toggle `new_checkout_flow` off and on. The checkout button in the app changes.
+
+This is the core idea: flip a switch on the server, every connected client
+updates in real time.
 
 ## WebSocket client
 
@@ -100,9 +159,22 @@ strings and `configInt()` for numbers.
 
 ## Tests
 
+Backend (10 tests, run from the project root with the virtual environment
+active):
+
 ```bash
 pytest
 ```
 
 Each test runs against a throwaway SQLite database, so it won't touch
 `flags.db`.
+
+Flutter client (3 tests):
+
+```bash
+cd flutter_client
+flutter test
+```
+
+Neither suite needs the server running — they spin up their own in-process
+server.
