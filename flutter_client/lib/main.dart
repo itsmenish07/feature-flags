@@ -60,6 +60,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final welcome = flags.config('welcome_message') ?? 'Welcome';
+    final announcement = flags.config('announcement');
 
     return Scaffold(
       appBar: AppBar(
@@ -80,6 +81,27 @@ class HomePage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
+                if (announcement != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      announcement,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 if (flags.isEnabled('new_checkout_flow'))
                   FilledButton(

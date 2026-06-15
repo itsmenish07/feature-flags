@@ -1,4 +1,5 @@
 from textual.app import App
+from textual.binding import Binding
 from textual.screen import ModalScreen
 from textual.containers import Vertical
 from textual.widgets import Header, Footer, Static, Input, Label
@@ -97,7 +98,7 @@ class Dashboard(App):
     BINDINGS = [
         ("up", "move_up", "Up"),
         ("down", "move_down", "Down"),
-        ("tab", "switch_view", "Switch"),
+        Binding("tab", "switch_view", "Switch", priority=True),
         ("space", "toggle", "Toggle"),
         ("enter", "edit", "Edit"),
         ("d", "delete", "Delete"),

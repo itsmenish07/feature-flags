@@ -29,6 +29,13 @@ reload or restart needed.
 pip install -r requirements.txt
 ```
 
+The database (`flags.db`) is created on first run and is not committed, so a
+fresh clone starts empty. Load some demo flags and configs with:
+
+```bash
+python seed.py
+```
+
 ## Run the server
 
 ```bash
